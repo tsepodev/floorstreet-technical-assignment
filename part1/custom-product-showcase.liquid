@@ -1,0 +1,1127 @@
+{% comment %}
+  custom-product-showcase.liquid
+  
+  Fully merchant-customizable product showcase section built for Online Store 2.0.
+  - Products can be configured via blocks (reorderable, addable, removable in theme editor)
+  - Reviews are configured via blocks too
+  - Graceful fallbacks to demo data if no blocks are configured
+  - Responsive across desktop and mobile
+  - Accessible: dialog-based cart popup, aria labels, semantic HTML
+{% endcomment %}
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+
+{% assign product_blocks = section.blocks | where: "type", "product" %}
+{% assign review_blocks  = section.blocks | where: "type", "review"  %}
+
+{%- comment -%} Fallback demo products shown when no blocks are added {%- endcomment -%}
+{% assign demo_products = "Pomegranate,Peach Mango,Vanilla Caramel,Toasted Marshmallow" | split: "," %}
+{% assign demo_prices    = "48.00,72.00,32.00,24.00"   | split: "," %}
+{% assign demo_compare   = "65.00,95.00,42.00,32.00"   | split: "," %}
+{% assign demo_descs = "Ultra-hydrating formula with a high-shine finish. Infused with coconut oil.,Creamy matte texture for long-lasting wear. Non-drying and lightweight.,Sheer tinted glow with a hint of vanilla. Perfect for everyday moisture.,Smooth buttery application with vitamin E." | split: "," %}
+{% assign demo_images    = "https://kyliejennercosmetics.co.uk/cdn/shop/files/KJC_LIP_25_Pomegrante_Stylized_Closed.jpg?v=1770222069&width=1600,https://kyliejennercosmetics.co.uk/cdn/shop/files/KJC_LIP_25_PeachMango_Stylized_Closed_9abcb5ec-e504-4c78-b426-ce67ce5bb660.jpg?v=1770222069&width=1600,https://kyliejennercosmetics.co.uk/cdn/shop/files/KJS_LIB_24_VanillaCaramel_Stylized_Closed.jpg?v=1770222069&width=1600,https://kyliejennercosmetics.co.uk/cdn/shop/files/KJS_LIB_25_ToastedMarshmallow_Stylized_V1.jpg?v=1770222069&width=1600" | split: "," %}
+{% assign demo_images2 = "https://kyliejennercosmetics.co.uk/cdn/shop/files/KJC_LIP_25_Pomegrante_Stylized_Open.jpg?crop=center&height=600&v=1769686018&width=600,https://kyliejennercosmetics.co.uk/cdn/shop/files/KJC_LIP_25_PeachMango_Stylized_Open_a181304b-b12f-4f79-ad55-5016119066bf.jpg?v=1770222069&width=1600,https://kyliejennercosmetics.co.uk/cdn/shop/files/KJS_LIB_24_VanillaCaramel_Stylized_Open.jpg?v=1770222069&width=1600,https://kyliejennercosmetics.co.uk/cdn/shop/files/KJS_LIB_25_ToastedMarshmallow_Stylized_V2_ab77a698-c7e3-4c2d-95b5-73314126bb9e.jpg?v=1770222069&width=1600" | split: "," %}
+
+<section
+  class="psc"
+  id="section-{{ section.id }}"
+  style="--col-count: {{ section.settings.columns }};"
+>
+
+  {%- comment -%} ── Section header ── {%- endcomment -%}
+  {% if section.settings.heading != blank or section.settings.subheading != blank %}
+    <header class="psc__header">
+      {% if section.settings.eyebrow != blank %}
+        <p class="psc__eyebrow">{{ section.settings.eyebrow }}</p>
+      {% endif %}
+      {% if section.settings.heading != blank %}
+        <h2 class="psc__heading">{{ section.settings.heading }}</h2>
+      {% endif %}
+      {% if section.settings.subheading != blank %}
+        <p class="psc__subheading">{{ section.settings.subheading }}</p>
+      {% endif %}
+    </header>
+  {% endif %}
+
+  {%- comment -%} ── Product grid ── {%- endcomment -%}
+  <div class="psc__grid">
+
+    {% assign has_real_products = false %}
+    {% for block in product_blocks %}
+      {% if block.settings.product != blank %}
+        {% assign has_real_products = true %}
+      {% endif %}
+    {% endfor %}
+
+    {% if has_real_products %}
+
+      {%- comment -%} Merchant has configured blocks — use real data {%- endcomment -%}
+      {% for block in product_blocks %}
+        {% assign p = block.settings.product %}
+        {% assign short_desc = block.settings.short_desc %}
+
+        {% if p != blank %}
+          {% assign title       = p.title %}
+          {% assign price       = p.price | money %}
+          {% assign compare     = p.compare_at_price %}
+          {% assign img         = p.featured_image | image_url: width: 800 %}
+          {% assign desc        = short_desc | default: p.description | strip_html | truncatewords: 18 %}
+          {% assign has_compare = false %}
+          {% if compare > p.price %}
+            {% assign has_compare  = true %}
+            {% assign compare_fmt  = compare | money %}
+            {% assign price_diff = p.compare_at_price | minus: p.price | plus: 0.0 %}
+            {% assign savings_pct = price_diff | divided_by: p.compare_at_price | times: 100 | round %}
+          {% endif %}
+        {% else %}
+          {%- comment -%} Block added but no product selected yet — show placeholder {%- endcomment -%}
+          {% assign title      = "Select a product" %}
+          {% assign price      = "—" %}
+          {% assign img        = "" %}
+          {% assign desc       = "Open the theme editor and pick a product for this card." %}
+          {% assign has_compare = false %}
+        {% endif %}
+
+        <article class="psc__card" {{ block.shopify_attributes }}>
+          <div class="psc__img-wrap">
+            {% if img != "" %}
+              <img
+                src="{{ img }}"
+                alt="{{ title | escape }}"
+                class="psc__img"
+                loading="lazy"
+                width="800"
+                height="1000"
+              >
+            {% else %}
+              <div class="psc__img-placeholder" aria-hidden="true"></div>
+            {% endif %}
+            {% if has_compare %}
+              <span class="psc__badge" aria-label="{{ savings_pct }}% off">−{{ savings_pct }}%</span>
+            {% endif %}
+          </div>
+
+          <div class="psc__info">
+            <h3 class="psc__title">{{ title }}</h3>
+            <p class="psc__desc">{{ desc }}</p>
+            <div class="psc__pricing">
+              <span class="psc__price">{{ price }}</span>
+              {% if has_compare %}
+                <s class="psc__compare">{{ compare_fmt }}</s>
+              {% endif %}
+            </div>
+            <button
+              class="psc__atc"
+              aria-label="Add {{ title | escape }} to cart"
+              data-product-title="{{ title | escape }}"
+              onclick="pscOpenDialog(this)"
+            >
+              {{ section.settings.btn_label | default: "Add to Cart" }}
+            </button>
+          </div>
+        </article>
+
+      {% endfor %}
+
+    {% else %}
+
+      {%- comment -%} No blocks — render demo fallback cards {%- endcomment -%}
+      {% for i in (0..3) %}
+        {% assign d_title   = demo_products[i] %}
+        {% assign d_price   = demo_prices[i] %}
+        {% assign d_compare = demo_compare[i] %}
+        {% assign d_desc    = demo_descs[i] %}
+        {% assign d_img     = demo_images[i] %}
+        {% assign d_diff = d_compare | minus: d_price | plus: 0.0 %}
+        {% assign d_savings = d_diff | divided_by: d_compare | times: 100 | round %}
+
+        <article class="psc__card">
+          <div class="psc__img-wrap">
+            <img
+            src="{{ d_img }}"
+            alt="{{ d_title }}"
+            class="psc__img psc__img--primary"
+            loading="lazy"
+            width="800"
+            height="1000"
+            >
+            {% assign d_img2 = demo_images2[i] %}
+            {% if d_img2 != blank %}
+            <img
+                src="{{ d_img2 }}"
+                alt="{{ d_title }}"
+                class="psc__img psc__img--secondary"
+                loading="lazy"
+                width="800"
+                height="1000"
+            >
+            {% endif %}
+
+            <span class="psc__badge" aria-label="On sale">{{ d_savings }}% OFF</span>
+          </div>
+
+          <div class="psc__info">
+            <h3 class="psc__title">{{ d_title }}</h3>
+            <p class="psc__desc">{{ d_desc }}</p>
+            <div class="psc__pricing">
+              <span class="psc__price">£{{ d_price }}</span>
+              <s class="psc__compare">${{ d_compare }}</s>
+            </div>
+            <button
+              class="psc__atc"
+              aria-label="Add {{ d_title }} to cart"
+              data-product-title="{{ d_title }}"
+              onclick="pscOpenDialog(this)"
+            >
+              {{ section.settings.btn_label | default: "Add to Cart" }}
+            </button>
+          </div>
+        </article>
+
+      {% endfor %}
+
+    {% endif %}
+  </div>
+
+  {%- comment -%} ── Add-to-cart dialog ── {%- endcomment -%}
+  <dialog class="psc__dialog" id="psc-dialog-{{ section.id }}" aria-modal="true">
+    <div class="psc__dialog-inner">
+      <div class="psc__dialog-icon" aria-hidden="true">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="20 6 9 17 4 12"/>
+        </svg>
+      </div>
+      <p class="psc__dialog-msg">
+        <span id="psc-dialog-product-{{ section.id }}"></span> added to your cart.
+      </p>
+      <div class="psc__dialog-actions">
+        <a href="/cart" class="psc__dialog-btn psc__dialog-btn--primary">View Cart</a>
+        <button class="psc__dialog-btn psc__dialog-btn--ghost" onclick="pscCloseDialog('{{ section.id }}')">
+          Continue Shopping
+        </button>
+      </div>
+      <button class="psc__dialog-close" onclick="pscCloseDialog('{{ section.id }}')" aria-label="Close">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+          <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+    </div>
+  </dialog>
+
+  {%- comment -%} ── Reviews carousel ── {%- endcomment -%}
+  {% assign demo_reviews = "Finally a balm that isn't sticky! It feels like butter on my lips and the shine is insane.,The coconut scent is everything. I keep one in my car and one in my purse at all times.,I’m obsessed with the sheer tint. It gives my lips that perfect healthy glow without looking like heavy makeup.,Literally the most hydrating formula I've ever used. My lips stayed soft even after the gloss wore off.,The packaging is so aesthetic and the applicator is the perfect size. Kylie really killed it with this formula." | split: "," %}
+  {% assign demo_authors  = "Mara T.,James L.,Sophie K.,Ren O.,Claire B." | split: "," %}
+  {% assign demo_locations = "Birmingham, UK,Sheffiled, UK,London, UK,Nottingham, UK,Melbourne, AU" | split: "," %}
+  {% assign demo_ratings   = "5,5,4,5,5" | split: "," %}
+
+  {% assign has_reviews = false %}
+  {% if review_blocks.size > 0 %}{% assign has_reviews = true %}{% endif %}
+
+  <div class="psc__reviews" id="psc-reviews-{{ section.id }}">
+    <header class="psc__reviews-header">
+      <p class="psc__eyebrow">{{ section.settings.reviews_eyebrow | default: "What people say" }}</p>
+      <h2 class="psc__reviews-heading">{{ section.settings.reviews_heading | default: "Loved by our customers" }}</h2>
+    </header>
+
+    <div class="psc__carousel" role="region" aria-label="Customer reviews">
+      <div class="psc__track" id="psc-track-{{ section.id }}">
+
+        {% if has_reviews %}
+          {% for block in review_blocks %}
+            <article class="psc__review" {{ block.shopify_attributes }}>
+              <div class="psc__stars" aria-label="{{ block.settings.rating }} out of 5 stars">
+                {% assign r = block.settings.rating | default: 5 | plus: 0 %}
+                {% for s in (1..5) %}
+                  <span class="psc__star {% if s <= r %}psc__star--filled{% endif %}" aria-hidden="true">★</span>
+                {% endfor %}
+              </div>
+              <blockquote class="psc__review-text">{{ block.settings.text }}</blockquote>
+              <footer class="psc__review-footer">
+                <strong class="psc__reviewer-name">{{ block.settings.author }}</strong>
+                {% if block.settings.location != blank %}
+                  <span class="psc__reviewer-loc">{{ block.settings.location }}</span>
+                {% endif %}
+              </footer>
+            </article>
+          {% endfor %}
+        {% else %}
+          {% for i in (0..4) %}
+            {% assign r_text     = demo_reviews[i] %}
+            {% assign r_author   = demo_authors[i] %}
+            {% assign r_location = demo_locations[i] %}
+            {% assign r_rating   = demo_ratings[i] | plus: 0 %}
+
+            <article class="psc__review">
+              <div class="psc__stars" aria-label="{{ r_rating }} out of 5 stars">
+                {% for s in (1..5) %}
+                  <span class="psc__star {% if s <= r_rating %}psc__star--filled{% endif %}" aria-hidden="true">★</span>
+                {% endfor %}
+              </div>
+              <blockquote class="psc__review-text">{{ r_text }}</blockquote>
+              <footer class="psc__review-footer">
+                <strong class="psc__reviewer-name">{{ r_author }}</strong>
+                <span class="psc__reviewer-loc">{{ r_location }}</span>
+              </footer>
+            </article>
+
+          {% endfor %}
+        {% endif %}
+
+      </div>
+
+      <div class="psc__carousel-controls">
+        <button class="psc__carousel-btn" id="psc-prev-{{ section.id }}" aria-label="Previous review" onclick="pscSlide('{{ section.id }}', -1)">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+        </button>
+        <div class="psc__dots" id="psc-dots-{{ section.id }}" role="tablist" aria-label="Review navigation"></div>
+        <button class="psc__carousel-btn" id="psc-next-{{ section.id }}" aria-label="Next review" onclick="pscSlide('{{ section.id }}', 1)">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+</section>
+
+
+{%- comment -%} ═══════════════════════════════════════
+    STYLES
+═══════════════════════════════════════ {%- endcomment -%}
+<style>
+  /* ── Tokens ── */
+  #section-{{ section.id }} {
+    --psc-bg:         {{ section.settings.bg_color | default: "#FAFAF8" }};
+    --psc-fg:         #1a1a18;
+    --psc-muted:      #7a7a72;
+    --psc-accent:     {{ section.settings.accent_color | default: "#C9A96E" }};
+    --psc-border:     #e8e8e2;
+    --psc-card-bg:    #ffffff;
+    --psc-radius:     2px;
+    --psc-gap:        clamp(1rem, 2vw, 2rem);
+    --psc-pad:        clamp(2.5rem, 6vw, 6rem);
+    --psc-font-serif: 'Cormorant Garamond', Georgia, serif;
+    --psc-font-sans:  'DM Sans', sans-serif;
+    --psc-cols:       var(--col-count, 4);
+    --psc-transition: 0.32s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  }
+
+  /* ── Section shell ── */
+  .psc {
+    background: var(--psc-bg);
+    padding: var(--psc-pad) var(--psc-gap);
+    font-family: var(--psc-font-sans);
+    color: var(--psc-fg);
+    overflow: hidden;
+  }
+
+  /* ── Header ── */
+  .psc__header {
+    max-width: 640px;
+    margin: 0 auto clamp(2.5rem, 5vw, 4.5rem);
+    text-align: center;
+  }
+
+  .psc__eyebrow {
+    font-family: var(--psc-font-sans);
+    font-size: 0.7rem;
+    font-weight: 500;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--psc-accent);
+    margin: 0 0 1rem;
+  }
+
+  .psc__heading {
+    font-family: var(--psc-font-serif);
+    font-size: clamp(2rem, 4vw, 3.25rem);
+    font-weight: 300;
+    font-style: italic;
+    line-height: 1.15;
+    letter-spacing: -0.01em;
+    margin: 0 0 1rem;
+    color: var(--psc-fg);
+  }
+
+  .psc__subheading {
+    font-size: 0.9rem;
+    font-weight: 300;
+    color: var(--psc-muted);
+    line-height: 1.7;
+    margin: 0;
+  }
+
+  /* ── Product grid ── */
+  .psc__grid {
+    display: grid;
+    grid-template-columns: repeat(var(--psc-cols), 1fr);
+    gap: var(--psc-gap);
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+
+  @media (max-width: 1024px) {
+    .psc__grid { grid-template-columns: repeat(2, 1fr); }
+  }
+  @media (max-width: 580px) {
+  .psc__grid {
+    display: flex;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    gap: 1rem;
+    padding: 0 1.25rem 1rem;
+    scrollbar-width: none;
+  }
+
+  .psc__grid::-webkit-scrollbar {
+    display: none;
+  }
+
+  .psc__card {
+    min-width: 65vw;
+    max-width: 65vw;
+    scroll-snap-align: start;
+    flex-shrink: 0;
+  }
+}
+  /* ── Card ── */
+  .psc__card {
+    display: flex;
+    flex-direction: column;
+    background: var(--psc-card-bg);
+    border: 1px solid var(--psc-border);
+    border-radius: var(--psc-radius);
+    overflow: hidden;
+    transition: transform var(--psc-transition), box-shadow var(--psc-transition);
+    cursor: default;
+  }
+
+  .psc__img--secondary {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity 0.7s ease;
+}
+
+  @media (hover: hover) {
+    .psc__card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 16px 48px rgba(0,0,0,0.08);
+    }
+
+    .psc__card:hover .psc__img {
+      transform: scale(1.04);
+    }
+    .psc__card:hover .psc__img--secondary {
+    opacity: 1;
+  }
+  .psc__card:hover .psc__img--primary {
+    opacity: 0;
+  }
+  }
+
+  /* ── Card image ── */
+  .psc__img-wrap {
+    position: relative;
+    overflow: hidden;
+    aspect-ratio: 4 / 5;
+    background: #f0ede8;
+  }
+
+  .psc__img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    transition: transform 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  }
+
+  .psc__img-placeholder {
+    width: 100%;
+    height: 100%;
+    background: repeating-linear-gradient(
+      45deg,
+      #f0ede8,
+      #f0ede8 10px,
+      #e8e4de 10px,
+      #e8e4de 20px
+    );
+  }
+
+  /* ── Discount badge ── */
+.psc__badge {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--psc-fg);
+  font-family: var(--psc-font-sans);
+  font-size: 0.65rem;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  padding: 4px 8px;
+  border-radius: var(--psc-radius);
+}
+
+  /* ── Card info ── */
+  .psc__info {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    padding: 1.25rem 1.25rem 1.5rem;
+    gap: 0.5rem;
+  }
+
+  .psc__title {
+    font-family: var(--psc-font-serif);
+    font-size: 1.15rem;
+    font-weight: 400;
+    line-height: 1.3;
+    margin: 0;
+    color: var(--psc-fg);
+  }
+
+  .psc__desc {
+    font-size: 0.8rem;
+    font-weight: 300;
+    color: var(--psc-muted);
+    line-height: 1.65;
+    margin: 0;
+    flex: 1;
+  }
+
+  .psc__pricing {
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+    margin-top: 0.25rem;
+  }
+
+  .psc__price {
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: var(--psc-fg);
+  }
+
+  .psc__compare {
+    font-size: 0.8rem;
+    font-weight: 300;
+    color: var(--psc-muted);
+    text-decoration: line-through;
+  }
+
+  /* ── Add to cart button ── */
+  .psc__atc {
+    margin-top: 0.75rem;
+    width: 100%;
+    padding: 0.75rem 1rem;
+    background: transparent;
+    border: 1px solid var(--psc-fg);
+    border-radius: var(--psc-radius);
+    font-family: var(--psc-font-sans);
+    font-size: 0.7rem;
+    font-weight: 500;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--psc-fg);
+    cursor: pointer;
+    transition: background var(--psc-transition), color var(--psc-transition);
+  }
+
+  @media (hover: hover) {
+    .psc__atc:hover {
+      background: var(--psc-fg);
+      color: var(--psc-bg);
+    }
+  }
+
+  .psc__atc:active {
+    opacity: 0.8;
+  }
+
+  /* ── Dialog ── */
+  .psc__dialog {
+    border: none;
+    border-radius: 4px;
+    padding: 0;
+    width: min(440px, 90vw);
+    box-shadow: 0 32px 80px rgba(0,0,0,0.18);
+    background: var(--psc-card-bg);
+    opacity: 0;
+    transform: translateY(24px);
+    transition: opacity 0.28s ease, transform 0.28s ease;
+  }
+
+  .psc__dialog[open] {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .psc__dialog::backdrop {
+    background: rgba(26, 26, 24, 0.4);
+    backdrop-filter: blur(4px);
+  }
+
+  .psc__dialog-inner {
+    padding: 2.5rem 2rem 2rem;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 1rem;
+  }
+
+  .psc__dialog-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: #f0f7f0;
+    border: 1px solid #c8e6c9;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #4caf50;
+    flex-shrink: 0;
+  }
+
+  .psc__dialog-msg {
+    font-family: var(--psc-font-sans);
+    font-size: 0.9rem;
+    font-weight: 300;
+    color: var(--psc-muted);
+    line-height: 1.6;
+    margin: 0;
+  }
+
+  .psc__dialog-msg strong {
+    color: var(--psc-fg);
+    font-weight: 500;
+  }
+
+  .psc__dialog-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    width: 100%;
+    margin-top: 0.5rem;
+  }
+
+  .psc__dialog-btn {
+    display: block;
+    width: 100%;
+    padding: 0.8rem 1rem;
+    border-radius: var(--psc-radius);
+    font-family: var(--psc-font-sans);
+    font-size: 0.7rem;
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    text-align: center;
+    cursor: pointer;
+    text-decoration: none;
+    transition: opacity 0.2s ease;
+  }
+
+  .psc__dialog-btn:hover { opacity: 0.8; }
+
+  .psc__dialog-btn--primary {
+    background: var(--psc-fg);
+    color: var(--psc-bg);
+    border: 1px solid var(--psc-fg);
+  }
+
+  .psc__dialog-btn--ghost {
+    background: transparent;
+    color: var(--psc-muted);
+    border: 1px solid var(--psc-border);
+  }
+
+  .psc__dialog-close {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    background: none;
+    border: none;
+    color: var(--psc-muted);
+    cursor: pointer;
+    padding: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 2px;
+    transition: color 0.2s;
+  }
+
+  .psc__dialog-close:hover { color: var(--psc-fg); }
+
+  /* ── Reviews section ── */
+  .psc__reviews {
+    max-width: 1400px;
+    margin: clamp(3rem, 8vw, 7rem) auto 0;
+    padding-top: clamp(2.5rem, 5vw, 4rem);
+    border-top: 1px solid var(--psc-border);
+  }
+
+  .psc__reviews-header {
+    text-align: center;
+    margin-bottom: clamp(2rem, 4vw, 3.5rem);
+  }
+
+  .psc__reviews-heading {
+    font-family: var(--psc-font-serif);
+    font-size: clamp(1.6rem, 3vw, 2.5rem);
+    font-weight: 300;
+    font-style: italic;
+    margin: 0;
+    color: var(--psc-fg);
+  }
+
+  /* ── Carousel ── */
+  .psc__carousel {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .psc__track {
+    display: flex;
+    transition: transform 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    will-change: transform;
+  }
+
+  /* ── Review card ── */
+  .psc__review {
+    min-width: 100%;
+    padding: clamp(1.5rem, 4vw, 3rem) clamp(1rem, 8vw, 8rem);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 1rem;
+    box-sizing: border-box;
+  }
+
+  @media (min-width: 768px) {
+    .psc__review { min-width: 50%; }
+  }
+
+  @media (min-width: 1100px) {
+    .psc__review { min-width: 33.333%; }
+  }
+
+  .psc__stars {
+    display: flex;
+    gap: 3px;
+  }
+
+  .psc__star {
+    font-size: 0.85rem;
+    color: var(--psc-border);
+    line-height: 1;
+  }
+
+  .psc__star--filled {
+    color: var(--psc-accent);
+  }
+
+  .psc__review-text {
+    font-family: var(--psc-font-serif);
+    font-size: clamp(1rem, 1.6vw, 1.2rem);
+    font-weight: 300;
+    font-style: italic;
+    line-height: 1.7;
+    color: var(--psc-fg);
+    margin: 0;
+    quotes: "\201C" "\201D";
+  }
+
+  .psc__review-text::before { content: open-quote; }
+  .psc__review-text::after  { content: close-quote; }
+
+  .psc__review-footer {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin-top: 0.25rem;
+  }
+
+  .psc__reviewer-name {
+    font-size: 0.75rem;
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--psc-fg);
+  }
+
+  .psc__reviewer-loc {
+    font-size: 0.72rem;
+    font-weight: 300;
+    color: var(--psc-muted);
+    letter-spacing: 0.04em;
+  }
+
+  /* ── Carousel controls ── */
+  .psc__carousel-controls {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1.25rem;
+    margin-top: 2rem;
+  }
+
+  .psc__carousel-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: 1px solid var(--psc-border);
+    background: transparent;
+    color: var(--psc-fg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background var(--psc-transition), border-color var(--psc-transition);
+    flex-shrink: 0;
+  }
+
+  @media (hover: hover) {
+    .psc__carousel-btn:hover {
+      background: var(--psc-fg);
+      color: var(--psc-bg);
+      border-color: var(--psc-fg);
+    }
+  }
+
+  .psc__dots {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+  }
+
+  .psc__dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--psc-border);
+    border: none;
+    cursor: pointer;
+    transition: background var(--psc-transition), transform var(--psc-transition);
+    padding: 0;
+  }
+
+  .psc__dot--active {
+    background: var(--psc-accent);
+    transform: scale(1.4);
+  }
+</style>
+
+
+{%- comment -%} ═══════════════════════════════════════
+    JAVASCRIPT
+═══════════════════════════════════════ {%- endcomment -%}
+<script>
+(function () {
+  'use strict';
+
+  // ── Cart dialog ────────────────────────────────────────────────
+  window.pscOpenDialog = function (btn) {
+    var sectionId = btn.closest('[id^="section-"]').id.replace('section-', '');
+    var dialog    = document.getElementById('psc-dialog-' + sectionId);
+    var nameEl    = document.getElementById('psc-dialog-product-' + sectionId);
+    if (!dialog) return;
+    nameEl.textContent = btn.dataset.productTitle || 'Item';
+    dialog.showModal();
+
+    // Auto-close after 6 s if user doesn't interact
+    clearTimeout(dialog._autoClose);
+    dialog._autoClose = setTimeout(function () {
+      pscCloseDialog(sectionId);
+    }, 6000);
+  };
+
+  window.pscCloseDialog = function (sectionId) {
+    var dialog = document.getElementById('psc-dialog-' + sectionId);
+    if (dialog && dialog.open) dialog.close();
+  };
+
+  // Close on backdrop click
+  document.addEventListener('click', function (e) {
+    if (e.target && e.target.nodeName === 'DIALOG') {
+      var sId = e.target.id.replace('psc-dialog-', '');
+      pscCloseDialog(sId);
+    }
+  });
+
+  // ── Reviews carousel ───────────────────────────────────────────
+  document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('[id^="psc-reviews-"]').forEach(function (section) {
+      var sectionId  = section.id.replace('psc-reviews-', '');
+      var track      = document.getElementById('psc-track-'  + sectionId);
+      var dotsWrap   = document.getElementById('psc-dots-'   + sectionId);
+      if (!track || !dotsWrap) return;
+
+      var slides     = Array.from(track.children);
+      var total      = slides.length;
+      var current    = 0;
+      var perView    = getPerView();
+      var maxIndex   = Math.max(0, total - perView);
+      var autoTimer;
+
+      function getPerView() {
+        if (window.innerWidth >= 1100) return Math.min(3, total);
+        if (window.innerWidth >= 768)  return Math.min(2, total);
+        return 1;
+      }
+
+      function buildDots() {
+        dotsWrap.innerHTML = '';
+        var dotCount = maxIndex + 1;
+        for (var i = 0; i <= maxIndex; i++) {
+          var d = document.createElement('button');
+          d.className = 'psc__dot' + (i === current ? ' psc__dot--active' : '');
+          d.setAttribute('aria-label', 'Go to review ' + (i + 1));
+          d.setAttribute('role', 'tab');
+          d.dataset.index = i;
+          d.addEventListener('click', function () { goTo(parseInt(this.dataset.index)); });
+          dotsWrap.appendChild(d);
+        }
+      }
+
+      function updateDots() {
+        Array.from(dotsWrap.children).forEach(function (d, i) {
+          d.classList.toggle('psc__dot--active', i === current);
+        });
+      }
+
+      function goTo(index) {
+        current = Math.max(0, Math.min(index, maxIndex));
+        var slideWidth = slides[0] ? slides[0].getBoundingClientRect().width : 0;
+        track.style.transform = 'translateX(-' + (current * slideWidth) + 'px)';
+        updateDots();
+        resetAuto();
+      }
+
+      window['pscSlide'] = window['pscSlide'] || {};
+      window.pscSlide = function (sid, dir) {
+        // Called from inline onclick — route to correct instance
+        if (sid === sectionId) {
+          goTo(current + dir);
+        }
+      };
+
+      function resetAuto() {
+        clearInterval(autoTimer);
+        autoTimer = setInterval(function () {
+          goTo(current >= maxIndex ? 0 : current + 1);
+        }, 5000);
+      }
+
+      // Recalculate on resize
+      var resizeTimer;
+      window.addEventListener('resize', function () {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(function () {
+          perView  = getPerView();
+          maxIndex = Math.max(0, total - perView);
+          current  = Math.min(current, maxIndex);
+          buildDots();
+          goTo(current);
+        }, 200);
+      });
+
+      // Touch / swipe support
+      var touchStartX = 0;
+      track.addEventListener('touchstart', function (e) {
+        touchStartX = e.touches[0].clientX;
+      }, { passive: true });
+
+      track.addEventListener('touchend', function (e) {
+        var delta = touchStartX - e.changedTouches[0].clientX;
+        if (Math.abs(delta) > 40) goTo(current + (delta > 0 ? 1 : -1));
+      });
+
+      // Init
+      buildDots();
+      resetAuto();
+    });
+  });
+})();
+</script>
+
+
+{%- comment -%} ═══════════════════════════════════════
+    SCHEMA
+═══════════════════════════════════════ {%- endcomment -%}
+{% schema %}
+{
+  "name": "Product Showcase",
+  "tag": "section",
+  "class": "section-product-showcase",
+  "settings": [
+    {
+      "type": "header",
+      "content": "Section header"
+    },
+    {
+      "type": "text",
+      "id": "eyebrow",
+      "label": "Eyebrow text",
+      "default": "The Lip Collection"
+    },
+    {
+      "type": "text",
+      "id": "heading",
+      "label": "Heading",
+      "default": "The Hydrating Lip Balm"
+    },
+    {
+      "type": "textarea",
+      "id": "subheading",
+      "label": "Subheading",
+      "default": "Nourish your lips with high-shine formulas and ultra-creamy textures designed for every day."
+    },
+    {
+      "type": "text",
+      "id": "btn_label",
+      "label": "Button label",
+      "default": "Add to Cart"
+    },
+    {
+      "type": "header",
+      "content": "Layout"
+    },
+    {
+      "type": "range",
+      "id": "columns",
+      "min": 2,
+      "max": 5,
+      "step": 1,
+      "label": "Columns (desktop)",
+      "default": 4
+    },
+    {
+      "type": "header",
+      "content": "Colors"
+    },
+    {
+      "type": "color",
+      "id": "bg_color",
+      "label": "Background",
+      "default": "#FAFAF8"
+    },
+    {
+      "type": "color",
+      "id": "accent_color",
+      "label": "Accent (badge, stars, dots)",
+      "default": "#C9A96E"
+    },
+    {
+      "type": "header",
+      "content": "Reviews"
+    },
+    {
+      "type": "text",
+      "id": "reviews_eyebrow",
+      "label": "Reviews eyebrow",
+      "default": "What people say"
+    },
+    {
+      "type": "text",
+      "id": "reviews_heading",
+      "label": "Reviews heading",
+      "default": "Loved by our customers"
+    }
+  ],
+  "blocks": [
+    {
+      "type": "product",
+      "name": "Product card",
+      "settings": [
+        {
+          "type": "product",
+          "id": "product",
+          "label": "Product"
+        },
+        {
+          "type": "textarea",
+          "id": "short_desc",
+          "label": "Short description override",
+          "info": "Optional — falls back to the product description if left blank."
+        }
+      ]
+    },
+    {
+      "type": "review",
+      "name": "Review",
+      "settings": [
+        {
+          "type": "range",
+          "id": "rating",
+          "min": 1,
+          "max": 5,
+          "step": 1,
+          "label": "Star rating",
+          "default": 5
+        },
+        {
+          "type": "textarea",
+          "id": "text",
+          "label": "Review text",
+          "default": "An exceptional product that exceeded my expectations."
+        },
+        {
+          "type": "text",
+          "id": "author",
+          "label": "Reviewer name",
+          "default": "B. Jaylen"
+        },
+        {
+          "type": "text",
+          "id": "location",
+          "label": "Birmingham, UK"
+        }
+      ]
+    }
+  ],
+  "presets": [
+    {
+      "name": "Product Showcase",
+      "blocks": [
+        { "type": "product" },
+        { "type": "product" },
+        { "type": "product" },
+        { "type": "product" },
+        { 
+            "type": "review", 
+            "settings": { 
+              "rating": 4, 
+              "author": "Mara T.", 
+              "location": "Nottingham, UK", 
+              "text": "Finally a balm that isn't sticky! It feels like butter on my lips and the shine is insane." 
+            } 
+          },
+          { 
+            "type": "review", 
+            "settings": { 
+              "rating": 5, 
+              "author": "James L.", 
+              "location": "Sheffield, UK", 
+              "text": "The coconut scent is everything. I keep one in my car and one in my purse at all times." 
+            } 
+          },
+          { 
+            "type": "review", 
+            "settings": { 
+              "rating": 5, 
+              "author": "Sophie K.", 
+              "location": "London, UK", 
+              "text": "The packaging is so aesthetic and the applicator is the perfect size. Kylie really killed it." 
+            } 
+          }
+      ]
+    }
+  ]
+}
+{% endschema %}
