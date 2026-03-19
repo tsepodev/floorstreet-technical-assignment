@@ -4,6 +4,18 @@ A full-stack CRUD application for managing products, built with React on the fro
 
 ---
 
+## Features
+
+- **CRUD Operations**: Create, read, update, and delete products
+- **Form Validation**: Client and server-side validation using Zod schemas
+- **Optimistic Updates**: Instant UI feedback with automatic rollback on errors
+- **Toast Notifications**: Success and error feedback for all operations
+- **Responsive Design**: Clean, mobile-friendly interface
+- **Loading States**: Skeleton loaders for better perceived performance
+- **Delete Confirmation**: Prevents accidental deletions
+
+---
+
 ## Running the app
 
 **Prerequisites:** Node.js 18+
