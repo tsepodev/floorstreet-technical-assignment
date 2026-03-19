@@ -116,7 +116,7 @@ body {
 }
 
 /* ── Sidebar ── */
-.app-sidebar { position: sticky; top: 73px; }
+.app-sidebar { position: sticky; top: 73px; z-index: 99 }
 
 /* ── Content ── */
 .app-content { min-width: 0; }
