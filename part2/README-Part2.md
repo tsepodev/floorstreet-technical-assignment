@@ -22,7 +22,7 @@ A full-stack CRUD application for managing products, built with React on the fro
 
 **Backend** (Terminal 1)
 ```bash
-cd part2/backend
+cd backend
 npm install
 mkdir data
 npm run dev
@@ -31,7 +31,7 @@ Server runs on `http://localhost:3001`
 
 **Frontend** (Terminal 2)
 ```bash
-cd part2/frontend
+cd frontend
 npm install
 npm run dev
 ```
